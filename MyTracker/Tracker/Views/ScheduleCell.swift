@@ -1,12 +1,19 @@
+
 import UIKit
 
+// MARK: - ScheduleCell
+
 final class ScheduleCell: UITableViewCell {
+    
+    // MARK: - UI Elements
     private let dayLabel = UILabel()
     private let toggle = UISwitch()
     private let separator = UIView()
     
+    // MARK: - Handlers
     private var toggleHandler: ((Bool) -> Void)?
     
+    // MARK: - Init
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         selectionStyle = .none
@@ -16,12 +23,16 @@ final class ScheduleCell: UITableViewCell {
         setupUI()
     }
     
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) не реализован")
+    }
+    
+    // MARK: - UI Setup
     private func setupUI() {
         dayLabel.font = UIFont(name: "SFPro-Regular", size: 17)
         dayLabel.textColor = .blackDayNew
         
-        toggle.onTintColor = .blue
-        
+        toggle.onTintColor = .blueApp
         separator.backgroundColor = .grayText
         
         [dayLabel, toggle, separator].forEach {
@@ -45,6 +56,7 @@ final class ScheduleCell: UITableViewCell {
         toggle.addTarget(self, action: #selector(toggleChanged), for: .valueChanged)
     }
     
+    // MARK: - Configuration
     func configure(day: String, isOn: Bool, isLast: Bool, onToggle: @escaping (Bool) -> Void) {
         dayLabel.text = day
         toggle.isOn = isOn
@@ -65,12 +77,8 @@ final class ScheduleCell: UITableViewCell {
         }
     }
     
+    // MARK: - Actions
     @objc private func toggleChanged() {
         toggleHandler?(toggle.isOn)
     }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) не реализован")
-    }
 }
-

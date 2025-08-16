@@ -1,7 +1,7 @@
 // MARK: - Ячейка для категории и расписания
 
 import UIKit
-class NewHabitRow: UIView {
+final class NewHabitRow: UIView {
     private var onTap: (() -> Void)?
     
     // Designated initializer with action

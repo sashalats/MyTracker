@@ -2,7 +2,7 @@
 
 import UIKit
 
-class NewDayRow: UIView {
+final class NewDayRow: UIView {
     init(title: String) {
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false

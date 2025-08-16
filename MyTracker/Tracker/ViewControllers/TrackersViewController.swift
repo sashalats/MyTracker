@@ -266,6 +266,7 @@ class TrackersViewController: UIViewController {
     @objc private func openModal() {
         TrackerAddViewController.present(from: self) { [weak self] newCategory in
             guard let self = self else { return }
+            
             if let idx = self.myTracker.firstIndex(where: { $0.title == newCategory.title }) {
                 var existing = self.myTracker[idx]
                 let existingIDs = Set(existing.trackers.map { $0.id })
@@ -275,7 +276,10 @@ class TrackersViewController: UIViewController {
             } else {
                 self.myTracker.append(newCategory)
             }
-            DispatchQueue.main.async {
+            
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                
                 self.collectionView.reloadData()
                 self.updateEmptyState()
             }
