@@ -3,8 +3,8 @@
 import UIKit
 final class NewHabitRow: UIView {
     private var onTap: (() -> Void)?
+    private let subtitleLabel = UILabel()
     
-    // Designated initializer with action
     init(title: String, onTap: (() -> Void)? = nil) {
         self.onTap = onTap
         super.init(frame: .zero)
@@ -16,12 +16,23 @@ final class NewHabitRow: UIView {
         label.font = UIFont(name: "SFPro-Regular", size: 17)
         label.lineHeight(22)
         
+        subtitleLabel.font = UIFont(name: "SFPro-Regular", size: 17)
+        subtitleLabel.textColor = UIColor(hex: "#AEAFB4")
+        subtitleLabel.lineHeight(22)
+        subtitleLabel.isHidden = true
+        subtitleLabel.numberOfLines = 1
+        
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right"))
         chevron.tintColor = .lightGray
         chevron.setContentHuggingPriority(.required, for: .horizontal)
         chevron.setContentCompressionResistancePriority(.required, for: .horizontal)
         
-        let hStack = UIStackView(arrangedSubviews: [label, chevron])
+        let vStack = UIStackView(arrangedSubviews: [label, subtitleLabel])
+        vStack.axis = .vertical
+        vStack.alignment = .leading
+        vStack.spacing = 2
+        
+        let hStack = UIStackView(arrangedSubviews: [vStack, chevron])
         hStack.axis = .horizontal
         hStack.alignment = .center
         hStack.distribution = .equalSpacing
@@ -37,6 +48,19 @@ final class NewHabitRow: UIView {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
         addGestureRecognizer(tapGesture)
         isUserInteractionEnabled = true
+    }
+    
+    func setOnTap(_ action: @escaping () -> Void) {
+        self.onTap = action
+    }
+    
+    func updateSubtitle(_ text: String?) {
+        let trimmed = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        subtitleLabel.text = trimmed
+        subtitleLabel.isHidden = trimmed.isEmpty
+        subtitleLabel.lineHeight(18)
+        setNeedsLayout()
+        layoutIfNeeded()
     }
     
     @objc private func handleTap() {
