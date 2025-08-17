@@ -1,20 +1,28 @@
 import UIKit
 
-final class TrackersViewController: UIViewController {
+class TrackersViewController: UIViewController {
     
     private var myTracker: [TrackerCategory] = []
     
     private lazy var trackerStore: TrackerStore = {
-        let app = UIApplication.shared.delegate as! AppDelegate
-        return TrackerStore(context: app.persistentContainer.viewContext)
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("Could not cast UIApplication delegate to AppDelegate")
+        }
+        return TrackerStore(context: appDelegate.persistentContainer.viewContext)
     }()
+
     private lazy var recordStore: TrackerRecordStore = {
-        let app = UIApplication.shared.delegate as! AppDelegate
-        return TrackerRecordStore(context: app.persistentContainer.viewContext)
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("Could not cast UIApplication delegate to AppDelegate")
+        }
+        return TrackerRecordStore(context: appDelegate.persistentContainer.viewContext)
     }()
+
     private lazy var categoryStore: TrackerCategoryStore = {
-        let app = UIApplication.shared.delegate as! AppDelegate
-        return TrackerCategoryStore(context: app.persistentContainer.viewContext)
+        guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
+            fatalError("Could not cast UIApplication delegate to AppDelegate")
+        }
+        return TrackerCategoryStore(context: appDelegate.persistentContainer.viewContext)
     }()
     
     private var currentDate: Date = Date()
@@ -151,8 +159,15 @@ final class TrackersViewController: UIViewController {
         view.addGestureRecognizer(tapGesture)
         
         updateEmptyState()
-        dateButton.setTitle(DateFormater.formatDate(Date()), for: .normal)
-        loadTrackersFromDB()
+        dateButton.setTitle(Date().formattedString(), for: .normal)
+        
+        trackerStore.onChange = { [weak self] sections in
+            guard let self = self else { return }
+            self.myTracker = sections
+            self.collectionView.reloadData()
+            self.updateEmptyState()
+        }
+        trackerStore.startObserving()
     }
     
     override func viewDidLayoutSubviews() {
@@ -240,7 +255,7 @@ final class TrackersViewController: UIViewController {
     
     @objc private func calendarDateChanged(_ sender: UIDatePicker) {
         currentDate = sender.date
-        dateButton.setTitle(DateFormater.formatDate(sender.date), for: .normal)
+        dateButton.setTitle(sender.date.formattedString(), for: .normal)
         calendarContainer.isHidden = true
         collectionView.reloadData()
         updateEmptyState()
@@ -275,17 +290,11 @@ final class TrackersViewController: UIViewController {
         collectionView.isHidden = !hasAny
     }
     
-    private func loadTrackersFromDB() {
-        myTracker = trackerStore.fetchTrackersGroupedByCategory()
-        collectionView.reloadData()
-        updateEmptyState()
-    }
     
     @objc private func openModal() {
         TrackerAddViewController.present(from: self) { [weak self] _ in
-            DispatchQueue.main.async { [weak self] in
-                self?.loadTrackersFromDB()
-            }
+            // Ничего не делаем: FRC сам пришлёт изменения через trackerStore.onChange
+            self?.dismiss(animated: true)
         }
     }
     
@@ -351,7 +360,7 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
                                         attributes: .destructive) { [weak self] _ in
                 guard let self = self else { return }
                 self.trackerStore.deleteTracker(for: tracker.id)
-                self.loadTrackersFromDB()
+                // Обновление придёт автоматически через trackerStore.onChange (NSFetchedResultsController)
             }
             return UIMenu(title: "", children: [deleteAction])
         }

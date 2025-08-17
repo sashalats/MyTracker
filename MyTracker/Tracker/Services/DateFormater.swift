@@ -1,11 +1,10 @@
 import Foundation
 
-final class DateFormater {
-    
-    static func formatDate(_ date: Date) -> String {
+extension Date {
+    func formattedString(_ format: String = "dd.MM.yy", locale: Locale = Locale(identifier: "ru_RU")) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "dd.MM.yy"
-        return formatter.string(from: date)
+        formatter.dateFormat = format
+        formatter.locale = locale
+        return formatter.string(from: self)
     }
-    
 }

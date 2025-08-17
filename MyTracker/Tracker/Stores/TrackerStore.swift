@@ -1,11 +1,76 @@
 import CoreData
 import UIKit
 
-final class TrackerStore {
+final class TrackerStore: NSObject {
     private let context: NSManagedObjectContext
+    
+    var onChange: (([TrackerCategory]) -> Void)?
+    private var fetchedResultsController: NSFetchedResultsController<TrackerCoreData>?
     
     init(context: NSManagedObjectContext) {
         self.context = context
+    }
+    
+    func startObserving() {
+        let request: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
+        
+        request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+            NSPredicate(format: "isPinned == NO"),
+            NSPredicate(format: "category != NULL"),
+            NSPredicate(format: "category.title != NULL"),
+            NSPredicate(format: "category.title != ''")
+        ])
+        request.sortDescriptors = [
+            NSSortDescriptor(key: "category.title", ascending: true),
+            NSSortDescriptor(key: "name", ascending: true)
+        ]
+        
+        let frc = NSFetchedResultsController(
+            fetchRequest: request,
+            managedObjectContext: context,
+            sectionNameKeyPath: "category.title",
+            cacheName: nil
+        )
+        frc.delegate = self
+        fetchedResultsController = frc
+        
+        do {
+            try frc.performFetch()
+        } catch {
+            print("TrackerStore FRC performFetch error: \(error)")
+        }
+        
+        publishSnapshot()
+    }
+    
+    private func publishSnapshot() {
+        var sections: [TrackerCategory] = []
+        
+        let pinnedRequest: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
+        pinnedRequest.predicate = NSPredicate(format: "isPinned == YES")
+        pinnedRequest.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+        let pinnedCore = (try? context.fetch(pinnedRequest)) ?? []
+        let pinned = pinnedCore.compactMap(makeTracker)
+        if !pinned.isEmpty {
+            sections.append(TrackerCategory(title: "Закреплённые", trackers: pinned))
+        }
+        
+        let objects = fetchedResultsController?.fetchedObjects ?? []
+        let grouped = Dictionary(grouping: objects) { core -> String in
+            (core.category?.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let sortedKeys = grouped.keys
+            .filter { !$0.isEmpty }
+            .sorted { $0.localizedCompare($1) == .orderedAscending }
+        
+        for key in sortedKeys {
+            let trackers = (grouped[key] ?? []).compactMap(makeTracker)
+            if !trackers.isEmpty {
+                sections.append(TrackerCategory(title: key, trackers: trackers))
+            }
+        }
+        
+        onChange?(sections)
     }
     
     func fetchTrackersGroupedByCategory() -> [TrackerCategory] {
@@ -140,5 +205,11 @@ final class TrackerStore {
         } catch {
             print("Ошибка сохранения контекста: \(error)")
         }
+    }
+}
+
+extension TrackerStore: NSFetchedResultsControllerDelegate {
+    func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        publishSnapshot()
     }
 }
