@@ -1,7 +1,7 @@
 import UIKit
 import Foundation
 
-class ScheduleViewController: UIViewController {
+final class ScheduleViewController: UIViewController {
     
     var onScheduleSelected: (([DayOfWeek]) -> Void)?
     var preselectedDays: Set<DayOfWeek> = []

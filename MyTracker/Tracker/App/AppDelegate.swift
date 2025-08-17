@@ -1,5 +1,3 @@
-
-
 import UIKit
 import CoreData
 
@@ -22,7 +20,6 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             scheduleAttribute.attributeValueClassName = NSStringFromClass(NSArray.self)
         }
 
-        // Create container with the configured (mutable) model
         let container = NSPersistentContainer(name: "ModelCoreData", managedObjectModel: model)
         container.loadPersistentStores { (_, error) in
             if let error = error as NSError? {

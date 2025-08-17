@@ -1,6 +1,6 @@
 import UIKit
 
-class TrackerAddViewController: UIViewController {
+final class TrackerAddViewController: UIViewController {
     
     private let emojiAndColorPicker = EmojiAndColorPickerView()
     private let scrollView = UIScrollView()
