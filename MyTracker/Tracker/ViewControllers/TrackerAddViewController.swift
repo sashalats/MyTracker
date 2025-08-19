@@ -1,6 +1,6 @@
 import UIKit
 
-final class TrackerAddViewController: UIViewController {
+class TrackerAddViewController: UIViewController {
     
     private let emojiAndColorPicker = EmojiAndColorPickerView()
     private let scrollView = UIScrollView()
@@ -40,9 +40,13 @@ final class TrackerAddViewController: UIViewController {
         return view
     }()
     
-    private lazy var categoryRow = NewHabitRow(title: "Категория") { [weak self] in
-        print("Список категорий")
-    }
+    private lazy var categoryRow: NewHabitRow = {
+        let row = NewHabitRow(title: "Категория")
+        row.setOnTap { [weak self] in
+            self?.presentCategoryPicker()
+        }
+        return row
+    }()
     private lazy var scheduleRow: NewHabitRow = {
         let row = NewHabitRow(title: "Расписание")
         row.setOnTap { [weak self, weak row] in
@@ -88,7 +92,7 @@ final class TrackerAddViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
-        // Default subtitles
+
         categoryRow.updateSubtitle("Важное")
         if !selectedDays.isEmpty { scheduleRow.updateSubtitle(formatDays(selectedDays)) }
         
@@ -96,7 +100,6 @@ final class TrackerAddViewController: UIViewController {
         cancelButton.titleLabel?.lineHeight(22)
         createButton.titleLabel?.lineHeight(22)
         
-        // Listeners
         nameField.addTarget(self, action: #selector(textFieldChanged), for: .editingChanged)
         emojiAndColorPicker.onChange = { [weak self] in
             self?.updateCreateButtonState()
@@ -105,7 +108,6 @@ final class TrackerAddViewController: UIViewController {
         cancelButton.addTarget(self, action: #selector(closeSheet), for: .touchUpInside)
         createButton.addTarget(self, action: #selector(createButtonTapped), for: .touchUpInside)
         
-        // Initial state
         updateCreateButtonState()
     }
     
@@ -188,6 +190,29 @@ final class TrackerAddViewController: UIViewController {
         ])
     }
     
+    // MARK: - Category picker
+    private func presentCategoryPicker() {
+        // Берём контекст из AppDelegate без импорта CoreData здесь
+        guard let app = UIApplication.shared.delegate as? AppDelegate else { return }
+        let store = TrackerCategoryStore(context: app.persistentContainer.viewContext)
+        let viewModel = TrackerCategoryViewModel(categoryStore: store)
+        let categoryVC = CategorySelectionViewController(viewModel: viewModel)
+
+        // Вернём выбранный заголовок категории в текущий экран
+        categoryVC.onCategorySelected = { [weak self] category in
+            guard let self = self else { return }
+            let title = category.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let safeTitle = (title?.isEmpty == false) ? title! : "Важное"
+            self.selectedCategoryTitle = safeTitle
+            self.categoryRow.updateSubtitle(safeTitle)
+            self.updateCreateButtonState()
+        }
+
+        let nav = UINavigationController(rootViewController: categoryVC)
+        nav.modalPresentationStyle = .pageSheet
+        present(nav, animated: true)
+    }
+    
     @objc private func closeSheet() {
         dismiss(animated: true, completion: nil)
     }
@@ -260,7 +285,6 @@ final class TrackerAddViewController: UIViewController {
             .monday: "Понедельник", .tuesday: "Вторник", .wednesday: "Среда",
             .thursday: "Четверг", .friday: "Пятница", .saturday: "Суббота", .sunday: "Воскресенье"
         ]
-        // Если дней много, показываем коротко
         if days.count >= 2 {
             let short: [DayOfWeek: String] = [
                 .monday: "Пн", .tuesday: "Вт", .wednesday: "Ср",
