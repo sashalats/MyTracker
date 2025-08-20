@@ -3,7 +3,7 @@ import UIKit
 
 final class TrackerStore: NSObject {
     private let context: NSManagedObjectContext
-    
+
     var onChange: (([TrackerCategory]) -> Void)?
     private var fetchedResultsController: NSFetchedResultsController<TrackerCoreData>?
     
@@ -13,7 +13,7 @@ final class TrackerStore: NSObject {
     
     func startObserving() {
         let request: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
-        
+
         request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
             NSPredicate(format: "isPinned == NO"),
             NSPredicate(format: "category != NULL"),
@@ -24,7 +24,7 @@ final class TrackerStore: NSObject {
             NSSortDescriptor(key: "category.title", ascending: true),
             NSSortDescriptor(key: "name", ascending: true)
         ]
-        
+
         let frc = NSFetchedResultsController(
             fetchRequest: request,
             managedObjectContext: context,
@@ -33,19 +33,19 @@ final class TrackerStore: NSObject {
         )
         frc.delegate = self
         fetchedResultsController = frc
-        
+
         do {
             try frc.performFetch()
         } catch {
             print("TrackerStore FRC performFetch error: \(error)")
         }
-        
+
         publishSnapshot()
     }
-    
+
     private func publishSnapshot() {
         var sections: [TrackerCategory] = []
-        
+
         let pinnedRequest: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
         pinnedRequest.predicate = NSPredicate(format: "isPinned == YES")
         pinnedRequest.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
@@ -54,7 +54,7 @@ final class TrackerStore: NSObject {
         if !pinned.isEmpty {
             sections.append(TrackerCategory(title: "Закреплённые", trackers: pinned))
         }
-        
+
         let objects = fetchedResultsController?.fetchedObjects ?? []
         let grouped = Dictionary(grouping: objects) { core -> String in
             (core.category?.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -62,17 +62,17 @@ final class TrackerStore: NSObject {
         let sortedKeys = grouped.keys
             .filter { !$0.isEmpty }
             .sorted { $0.localizedCompare($1) == .orderedAscending }
-        
+
         for key in sortedKeys {
             let trackers = (grouped[key] ?? []).compactMap(makeTracker)
             if !trackers.isEmpty {
                 sections.append(TrackerCategory(title: key, trackers: trackers))
             }
         }
-        
+
         onChange?(sections)
     }
-    
+
     func fetchTrackersGroupedByCategory() -> [TrackerCategory] {
         let request: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
         request.sortDescriptors = [
@@ -142,6 +142,9 @@ final class TrackerStore: NSObject {
         tracker.category = category
         tracker.isPinned = false
         saveContext()
+        
+        // отладка:
+        dumpAllTrackers()
     }
     
     func updatePinState(for id: UUID, isPinned: Bool) {
@@ -211,5 +214,30 @@ final class TrackerStore: NSObject {
 extension TrackerStore: NSFetchedResultsControllerDelegate {
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
         publishSnapshot()
+    }
+}
+
+extension TrackerStore {
+// Отладочный дамп всего, что лежит в Core Data
+    func dumpAllTrackers() {
+        let req: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
+        req.sortDescriptors = [
+            NSSortDescriptor(key: "category.title", ascending: true),
+            NSSortDescriptor(key: "name", ascending: true)
+        ]
+        do {
+            let all = try context.fetch(req)
+            print("=== CoreData dump (\(all.count)) ===")
+            for obj in all {
+                let id = obj.id?.uuidString ?? "nil"
+                let name = obj.name ?? "nil"
+                let cat = obj.category?.title ?? "nil"
+                let raw = (obj.schedule as? [Int]) ?? []
+                print("• id=\(id) name=\"\(name)\" category=\"\(cat)\" schedule=\(raw) pinned=\(obj.isPinned)")
+            }
+            print("===============================")
+        } catch {
+            print("[TrackerStore] dumpAllTrackers error: \(error)")
+        }
     }
 }

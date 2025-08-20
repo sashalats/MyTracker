@@ -52,6 +52,7 @@ final class EditCategoryViewController: UIViewController {
         setupActions()
         nameField.text = category.title
         textFieldChanged()
+        enableHideKeyboardOnTap()
     }
     
     private func setupLayout() {

@@ -3,6 +3,8 @@ import UIKit
 class TrackersViewController: UIViewController {
     
     private var myTracker: [TrackerCategory] = []
+    private var visibleSections: [TrackerCategory] = []
+    private var showAllTrackers = false
     
     private lazy var trackerStore: TrackerStore = {
         guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else {
@@ -39,6 +41,7 @@ class TrackersViewController: UIViewController {
         cv.delegate = self
         cv.backgroundColor = .clear
         cv.translatesAutoresizingMaskIntoConstraints = false
+        cv.alwaysBounceVertical = true
         return cv
     }()
     
@@ -50,7 +53,6 @@ class TrackersViewController: UIViewController {
         button.titleLabel?.font = UIFont(name: "SFPro-Regular", size: 17)
         button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 5.5, bottom: 6, right: 5.5)
         button.heightAnchor.constraint(equalToConstant: 34).isActive = true
-        button.addTarget(nil, action: #selector(openCalendar), for: .touchUpInside)
         button.titleLabel?.lineHeight(22)
         return button
     }()
@@ -151,12 +153,17 @@ class TrackersViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .white
         setupLayout()
+        dateButton.addTarget(self, action: #selector(openCalendar), for: .touchUpInside)
         calendarView.addTarget(self, action: #selector(calendarDateChanged), for: .valueChanged)
         plusButton.addTarget(self, action: #selector(openModal), for: .touchUpInside)
         view.bringSubviewToFront(calendarContainer)
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTapOutsideCalendar(_:)))
         tapGesture.cancelsTouchesInView = false
         view.addGestureRecognizer(tapGesture)
+
+        // Long-press on dateButton toggles "All days" mode
+        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(toggleAllDaysMode(_:)))
+        dateButton.addGestureRecognizer(longPress)
         
         updateEmptyState()
         dateButton.setTitle(Date().formattedString(), for: .normal)
@@ -164,6 +171,7 @@ class TrackersViewController: UIViewController {
         trackerStore.onChange = { [weak self] sections in
             guard let self = self else { return }
             self.myTracker = sections
+            self.rebuildVisibleSections()
             self.collectionView.reloadData()
             self.updateEmptyState()
         }
@@ -186,14 +194,28 @@ class TrackersViewController: UIViewController {
             layout.invalidateLayout()
         }
     }
-    
-    private func trackersForCurrentDate(in section: Int) -> [Tracker] {
-        guard section >= 0 && section < myTracker.count else { return [] }
-        
-        let calendarWeekday = Calendar.current.component(.weekday, from: currentDate)
-        let mapped = (calendarWeekday == 1) ? 7 : (calendarWeekday - 1)
-        guard let needDay = DayOfWeek(rawValue: mapped) else { return [] }
-        return myTracker[section].trackers.filter { $0.schedule.contains(needDay) }
+
+    private func rebuildVisibleSections() {
+        var result: [TrackerCategory] = []
+        // Determine needed day unless "show all" mode
+        let calendarWeekday = Calendar.current.component(.weekday, from: currentDate) // 1=Sun ... 7=Sat
+        let mapped = (calendarWeekday == 1) ? 7 : (calendarWeekday - 1)               // 1=Mon ... 7=Sun
+        let neededDay = DayOfWeek(rawValue: mapped)
+
+        for section in myTracker {
+            let trackers: [Tracker]
+            if showAllTrackers {
+                trackers = section.trackers
+            } else if let needDay = neededDay {
+                trackers = section.trackers.filter { $0.schedule.contains(needDay) }
+            } else {
+                trackers = section.trackers
+            }
+            if !trackers.isEmpty {
+                result.append(TrackerCategory(title: section.title, trackers: trackers))
+            }
+        }
+        visibleSections = result
     }
     
     private func setupLayout() {
@@ -254,9 +276,26 @@ class TrackersViewController: UIViewController {
     }
     
     @objc private func calendarDateChanged(_ sender: UIDatePicker) {
+        showAllTrackers = false
         currentDate = sender.date
         dateButton.setTitle(sender.date.formattedString(), for: .normal)
         calendarContainer.isHidden = true
+        self.rebuildVisibleSections()
+        collectionView.reloadData()
+        updateEmptyState()
+    }
+    @objc private func toggleAllDaysMode(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began else { return }
+        showAllTrackers.toggle()
+        if showAllTrackers {
+            // Show all trackers regardless of schedule/day
+            dateButton.setTitle("Все дни", for: .normal)
+            calendarContainer.isHidden = true
+        } else {
+            // Return to date filter mode
+            dateButton.setTitle(currentDate.formattedString(), for: .normal)
+        }
+        self.rebuildVisibleSections()
         collectionView.reloadData()
         updateEmptyState()
     }
@@ -282,9 +321,7 @@ class TrackersViewController: UIViewController {
     }
     
     private func updateEmptyState() {
-        let hasAny = myTracker.indices.contains { section in
-            !trackersForCurrentDate(in: section).isEmpty
-        }
+        let hasAny = !visibleSections.isEmpty && visibleSections.contains { !$0.trackers.isEmpty }
         emptyIcon.isHidden = hasAny
         emptyLabel.isHidden = hasAny
         collectionView.isHidden = !hasAny
@@ -293,8 +330,8 @@ class TrackersViewController: UIViewController {
     
     @objc private func openModal() {
         TrackerAddViewController.present(from: self) { [weak self] _ in
-            // Ничего не делаем: FRC сам пришлёт изменения через trackerStore.onChange
-            self?.dismiss(animated: true)
+            // Ничего не делаем: FRC сам пришлёт обновления через trackerStore.onChange
+            self?.updateEmptyState()
         }
     }
     
@@ -310,18 +347,18 @@ class TrackersViewController: UIViewController {
 
 extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func numberOfSections(in collectionView: UICollectionView) -> Int {
-        myTracker.count
+        visibleSections.count
     }
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return trackersForCurrentDate(in: section).count
+        return visibleSections[section].trackers.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TrackerCell.reuseIdentifier, for: indexPath) as? TrackerCell else {
             return UICollectionViewCell()
         }
-        let trackers = trackersForCurrentDate(in: indexPath.section)
+        let trackers = visibleSections[indexPath.section].trackers
         let tracker = trackers[indexPath.item]
         
         let count = recordStore.numberOfCompletions(trackerId: tracker.id)
@@ -338,7 +375,7 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
               let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: TrackerHeaderView.reuseIdentifier, for: indexPath) as? TrackerHeaderView else {
             return UICollectionReusableView()
         }
-        header.titleLabel.text = myTracker[indexPath.section].title
+        header.titleLabel.text = visibleSections[indexPath.section].title
         return header
     }
     
@@ -349,7 +386,7 @@ extension TrackersViewController: UICollectionViewDataSource, UICollectionViewDe
     func collectionView(_ collectionView: UICollectionView,
                         contextMenuConfigurationForItemAt indexPath: IndexPath,
                         point: CGPoint) -> UIContextMenuConfiguration? {
-        let trackers = trackersForCurrentDate(in: indexPath.section)
+        let trackers = visibleSections[indexPath.section].trackers
         guard indexPath.item < trackers.count else { return nil }
         let tracker = trackers[indexPath.item]
         

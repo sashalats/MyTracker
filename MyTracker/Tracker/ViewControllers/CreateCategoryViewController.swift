@@ -40,6 +40,7 @@ final class CreateCategoryViewController: UIViewController {
         view.backgroundColor = .whiteDayNew
         setupLayout()
         setupActions()
+        enableHideKeyboardOnTap() 
     }
     
     private func setupLayout() {

@@ -8,7 +8,7 @@ class TrackerAddViewController: UIViewController {
     
     var onCreate: ((TrackerCategory) -> Void)?
     
-    private var selectedCategoryTitle: String? = "Важное"
+    private var selectedCategoryTitle: String? = nil
     private var selectedDays: [DayOfWeek] = []
     var onScheduleSelected: (([DayOfWeek]) -> Void)?
     
@@ -93,7 +93,6 @@ class TrackerAddViewController: UIViewController {
         view.backgroundColor = .white
         setupLayout()
 
-        categoryRow.updateSubtitle("Важное")
         if !selectedDays.isEmpty { scheduleRow.updateSubtitle(formatDays(selectedDays)) }
         
         titleLabel.lineHeight(22)
@@ -108,6 +107,10 @@ class TrackerAddViewController: UIViewController {
         cancelButton.addTarget(self, action: #selector(closeSheet), for: .touchUpInside)
         createButton.addTarget(self, action: #selector(createButtonTapped), for: .touchUpInside)
         
+        nameField.returnKeyType = .done
+        nameField.delegate = self
+        
+        enableHideKeyboardOnTap()
         updateCreateButtonState()
     }
     
@@ -202,9 +205,13 @@ class TrackerAddViewController: UIViewController {
         categoryVC.onCategorySelected = { [weak self] category in
             guard let self = self else { return }
             let title = category.title?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let safeTitle = (title?.isEmpty == false) ? title! : "Важное"
-            self.selectedCategoryTitle = safeTitle
-            self.categoryRow.updateSubtitle(safeTitle)
+            if let t = title, !t.isEmpty {
+                self.selectedCategoryTitle = t
+                self.categoryRow.updateSubtitle(t)
+            } else {
+                self.selectedCategoryTitle = nil
+                self.categoryRow.updateSubtitle("")
+            }
             self.updateCreateButtonState()
         }
 
@@ -218,23 +225,48 @@ class TrackerAddViewController: UIViewController {
     }
     
     private func createTracker() {
-        guard let name = nameField.text, !name.isEmpty else { return }
-        
+        // 1) Жёсткие проверки перед сохранением
+        guard
+            let name = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !name.isEmpty
+        else { return }
+
+        guard
+            let categoryTitle = selectedCategoryTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !categoryTitle.isEmpty
+        else { return }
+
+        // emoji / color / schedule обязательны (кнопка "Создать" и так блокируется, но дублируем на всякий случай)
+        guard
+            let emoji = emojiAndColorPicker.selectedEmoji,
+            let uiColor = emojiAndColorPicker.selectedColor,
+            !selectedDays.isEmpty
+        else { return }
+
+        // 2) Получаем контекст и сторы (без import CoreData здесь)
         guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
         let context = appDelegate.persistentContainer.viewContext
-        
         let categoryStore = TrackerCategoryStore(context: context)
-        let trackerStore = TrackerStore(context: context)
-        
-        let id = UUID()
-        let emoji = emojiAndColorPicker.selectedEmoji ?? "❤️"
-        let color = emojiAndColorPicker.selectedColor ?? .blueApp
-        let colorHex = color.toHexString()
-        let schedule = selectedDays
-        print("[AddVC] schedule to save:", schedule)
-        let categoryTitle = (selectedCategoryTitle ?? "Важное")
-        
+        let trackerStore  = TrackerStore(context: context)
+
+        // 3) Берём (или создаём) категорию строго один раз — всегда один и тот же объект для одного title
         let categoryEntity = categoryStore.createCategoryIfNeeded(title: categoryTitle)
+
+        // 4) Готовим поля трекера
+        let id = UUID()
+        let colorHex = uiColor.toHexString()
+        let schedule = selectedDays
+
+        // 5) Логируем то, что сохраняем
+        print("[AddVC] will save tracker:",
+              "id=\(id.uuidString)",
+              "name=\(name)",
+              "category='\(categoryTitle)'",
+              "emoji=\(emoji)",
+              "colorHex=\(colorHex)",
+              "schedule=\(schedule.map { $0.rawValue })")
+
+        // 6) Сохраняем
         trackerStore.addTracker(
             id: id,
             name: name,
@@ -243,21 +275,16 @@ class TrackerAddViewController: UIViewController {
             schedule: schedule,
             category: categoryEntity
         )
-        
-        let trackerModel = Tracker(
-            id: id,
-            name: name,
-            color: color,
-            emoji: emoji,
-            schedule: schedule,
-            isPinned: false
-        )
-        let categoryModel = TrackerCategory(title: categoryTitle, trackers: [trackerModel])
-        onCreate?(categoryModel)
-        
+
+        // 7) ВАЖНО: не трогаем локальные массивы/секции и не зовём onCreate — экран списка
+        // сам обновится через NSFetchedResultsController (trackerStore.onChange)
+        // Если onCreate сейчас используется где‑то ещё — можно оставить, но он здесь не нужен.
+        // onCreate?(TrackerCategory(title: categoryTitle, trackers: [
+        //     Tracker(id: id, name: name, color: uiColor, emoji: emoji, schedule: schedule, isPinned: false)
+        // ]))
+        // 9) Закрываем экран
         dismiss(animated: true, completion: nil)
     }
-    
     @objc private func createButtonTapped() {
         createTracker()
     }
@@ -268,7 +295,7 @@ class TrackerAddViewController: UIViewController {
     
     private func updateCreateButtonState() {
         let hasName = !(nameField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let hasCategory = !(selectedCategoryTitle ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasCategory = (selectedCategoryTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
         let hasSchedule = !selectedDays.isEmpty
         let hasEmoji = emojiAndColorPicker.selectedEmoji != nil
         let hasColor = emojiAndColorPicker.selectedColor != nil
@@ -302,5 +329,16 @@ class TrackerAddViewController: UIViewController {
         modalVC.modalPresentationStyle = .pageSheet
         modalVC.onCreate = onCreate
         parent.present(modalVC, animated: true, completion: nil)
+    }
+    
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
+    }
+}
+
+extension TrackerAddViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
 }

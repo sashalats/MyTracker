@@ -1,97 +1,100 @@
 import UIKit
 
+struct PageModel {
+    let image: UIImage?
+    let text: String
+}
+
+extension PageModel {
+    static let aboutTracking = PageModel(
+        image: UIImage(named: "blueScreenImage"),
+        text: "Отслеживайте только то, что хотите"
+    )
+    static let aboutWaterAndYoga = PageModel(
+        image: UIImage(named: "redScreenImage"),
+        text: "Даже если это не литры воды и йога"
+    )
+}
+
+private final class OnboardingPageViewController: UIViewController {
+
+    private let model: PageModel
+    private let onStart: (() -> Void)?
+
+    init(model: PageModel, onStart: (() -> Void)? = nil) {
+        self.model = model
+        self.onStart = onStart
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) не реализован")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // Background image
+        let bgImage = UIImageView(image: model.image)
+        bgImage.contentMode = .scaleAspectFill
+        bgImage.translatesAutoresizingMaskIntoConstraints = false
+
+        // Title label
+        let titleLabel = UILabel()
+        titleLabel.text = model.text
+        titleLabel.font = UIFont(name: "SFPro-Bold", size: 32)
+        titleLabel.textColor = .justBlack
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 0
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Primary button
+        let primaryButton = UIButton(type: .system)
+        primaryButton.setTitle("Вот это технологии!", for: .normal)
+        primaryButton.backgroundColor = .justBlack
+        primaryButton.setTitleColor(.white, for: .normal)
+        primaryButton.titleLabel?.font = UIFont(name: "SFPro-Medium", size: 16)
+        primaryButton.layer.cornerRadius = 16
+        primaryButton.translatesAutoresizingMaskIntoConstraints = false
+        primaryButton.addTarget(self, action: #selector(didTapStart), for: .touchUpInside)
+
+        view.addSubview(bgImage)
+        view.addSubview(titleLabel)
+        view.addSubview(primaryButton)
+        view.sendSubviewToBack(bgImage)
+
+        NSLayoutConstraint.activate([
+            bgImage.topAnchor.constraint(equalTo: view.topAnchor),
+            bgImage.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            bgImage.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bgImage.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            titleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            titleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            titleLabel.bottomAnchor.constraint(equalTo: primaryButton.topAnchor, constant: -160),
+
+            primaryButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            primaryButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            primaryButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -50),
+            primaryButton.heightAnchor.constraint(equalToConstant: 60)
+        ])
+    }
+
+    @objc private func didTapStart() {
+        onStart?()
+    }
+}
+
 final class OnboardingViewController: UIPageViewController, UIPageViewControllerDelegate, UIPageViewControllerDataSource {
     
     var onFinished: (() -> Void)?
     lazy var pages: [UIViewController] = {
-        
-        let blueScreen = UIViewController()
-        let blueImage = UIImageView(image: UIImage(named: "blueScreenImage"))
-        blueImage.contentMode = .scaleAspectFill
-        blueImage.translatesAutoresizingMaskIntoConstraints = false
-        
-        let blueLabel = UILabel()
-        blueLabel.text = "Отслеживайте только то, что хотите"
-        blueLabel.font = UIFont(name: "SFPro-Bold", size: 32)
-        blueLabel.textColor = .justBlack
-        blueLabel.textAlignment = .center
-        blueLabel.numberOfLines = 0
-        blueLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        let blueButton = UIButton(type: .system)
-        blueButton.setTitle("Вот это технологии!", for: .normal)
-        blueButton.backgroundColor = .justBlack
-        blueButton.setTitleColor(.white, for: .normal)
-        blueButton.titleLabel?.font = UIFont(name: "SFPro-Medium", size: 16)
-        blueButton.layer.cornerRadius = 16
-        blueButton.translatesAutoresizingMaskIntoConstraints = false
-        blueButton.addTarget(self, action: #selector(didTapStart), for: .touchUpInside)
-        
-        blueScreen.view.addSubview(blueImage)
-        blueScreen.view.addSubview(blueLabel)
-        blueScreen.view.addSubview(blueButton)
-        blueScreen.view.sendSubviewToBack(blueImage)
-        
-        NSLayoutConstraint.activate([
-            blueImage.topAnchor.constraint(equalTo: blueScreen.view.topAnchor),
-            blueImage.bottomAnchor.constraint(equalTo: blueScreen.view.bottomAnchor),
-            blueImage.leadingAnchor.constraint(equalTo: blueScreen.view.leadingAnchor),
-            blueImage.trailingAnchor.constraint(equalTo: blueScreen.view.trailingAnchor),
-            
-            blueLabel.leadingAnchor.constraint(equalTo: blueScreen.view.leadingAnchor, constant: 16),
-            blueLabel.trailingAnchor.constraint(equalTo: blueScreen.view.trailingAnchor, constant: -16),
-            blueLabel.bottomAnchor.constraint(equalTo: blueButton.topAnchor, constant: -160),
-            
-            blueButton.leadingAnchor.constraint(equalTo: blueScreen.view.leadingAnchor, constant: 16),
-            blueButton.trailingAnchor.constraint(equalTo: blueScreen.view.trailingAnchor, constant: -16),
-            blueButton.bottomAnchor.constraint(equalTo: blueScreen.view.safeAreaLayoutGuide.bottomAnchor, constant: -50),
-            blueButton.heightAnchor.constraint(equalToConstant: 60)
-        ])
-        
-        let redScreen = UIViewController()
-        let redImage = UIImageView(image: UIImage(named: "redScreenImage"))
-        redImage.contentMode = .scaleAspectFill
-        redImage.translatesAutoresizingMaskIntoConstraints = false
-        
-        let redLabel = UILabel()
-        redLabel.text = "Даже если это не литры воды и йога"
-        redLabel.font = UIFont(name: "SFPro-Bold", size: 32)
-        redLabel.textColor = .justBlack
-        redLabel.textAlignment = .center
-        redLabel.numberOfLines = 0
-        redLabel.translatesAutoresizingMaskIntoConstraints = false
-        
-        let redButton = UIButton(type: .system)
-        redButton.setTitle("Вот это технологии!", for: .normal)
-        redButton.backgroundColor = .justBlack
-        redButton.setTitleColor(.white, for: .normal)
-        redButton.titleLabel?.font = UIFont(name: "SFPro-Medium", size: 16)
-        redButton.layer.cornerRadius = 16
-        redButton.translatesAutoresizingMaskIntoConstraints = false
-        redButton.addTarget(self, action: #selector(didTapStart), for: .touchUpInside)
-        
-        redScreen.view.addSubview(redImage)
-        redScreen.view.addSubview(redLabel)
-        redScreen.view.addSubview(redButton)
-        redScreen.view.sendSubviewToBack(redImage)
-        
-        NSLayoutConstraint.activate([
-            redImage.topAnchor.constraint(equalTo: redScreen.view.topAnchor),
-            redImage.bottomAnchor.constraint(equalTo: redScreen.view.bottomAnchor),
-            redImage.leadingAnchor.constraint(equalTo: redScreen.view.leadingAnchor),
-            redImage.trailingAnchor.constraint(equalTo: redScreen.view.trailingAnchor),
-            
-            redLabel.leadingAnchor.constraint(equalTo: redScreen.view.leadingAnchor, constant: 16),
-            redLabel.trailingAnchor.constraint(equalTo: redScreen.view.trailingAnchor, constant: -16),
-            redLabel.bottomAnchor.constraint(equalTo: redButton.topAnchor, constant: -160),
-            
-            redButton.leadingAnchor.constraint(equalTo: redScreen.view.leadingAnchor, constant: 16),
-            redButton.trailingAnchor.constraint(equalTo: redScreen.view.trailingAnchor, constant: -16),
-            redButton.bottomAnchor.constraint(equalTo: redScreen.view.safeAreaLayoutGuide.bottomAnchor, constant: -50),
-            redButton.heightAnchor.constraint(equalToConstant: 60)
-        ])
-        
-        return [blueScreen, redScreen]
+        let models: [PageModel] = [.aboutTracking, .aboutWaterAndYoga]
+        return models.map { model in
+            OnboardingPageViewController(model: model, onStart: { [weak self] in
+                self?.didTapStart()
+            })
+        }
     }()
     
     override init(transitionStyle: UIPageViewController.TransitionStyle = .scroll,
@@ -106,7 +109,7 @@ final class OnboardingViewController: UIPageViewController, UIPageViewController
         fatalError("init(coder:) не реализован")
     }
     
-    lazy var pageControl: UIPageControl = {
+    private lazy var pageControl: UIPageControl = {
         let pageControl = UIPageControl()
         pageControl.numberOfPages = pages.count
         pageControl.currentPage = 0
@@ -176,4 +179,3 @@ final class OnboardingViewController: UIPageViewController, UIPageViewController
         onFinished?()
     }
 }
-
