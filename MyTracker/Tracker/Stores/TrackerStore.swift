@@ -142,9 +142,15 @@ final class TrackerStore: NSObject {
         tracker.category = category
         tracker.isPinned = false
         saveContext()
-        
-        // отладка:
         dumpAllTrackers()
+    }
+
+    /// Получить Core Data объект трекера по UUID
+    func fetchTracker(withId id: UUID) -> TrackerCoreData? {
+        let request: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
+        request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
+        request.fetchLimit = 1
+        return try? context.fetch(request).first
     }
     
     func updatePinState(for id: UUID, isPinned: Bool) {
@@ -218,7 +224,6 @@ extension TrackerStore: NSFetchedResultsControllerDelegate {
 }
 
 extension TrackerStore {
-// Отладочный дамп всего, что лежит в Core Data
     func dumpAllTrackers() {
         let req: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
         req.sortDescriptors = [

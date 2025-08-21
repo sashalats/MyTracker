@@ -14,8 +14,9 @@ class TrackerAddViewController: UIViewController {
     
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "Новая привычка"
+        label.text = L10n.newHabitButton
         label.font = UIFont(name: "SFPro-Medium", size: 16)
+        label.textColor = .blackDayNew
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -23,8 +24,9 @@ class TrackerAddViewController: UIViewController {
     
     private let nameField: UITextField = {
         let textField = UITextField()
-        textField.placeholder = "Введите название трекера"
-        textField.backgroundColor = UIColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1) // #F7F8F9
+        textField.placeholder = L10n.trackerNamePlaceholder
+        textField.backgroundColor = .fieldBackground.withAlphaComponent(0.3)
+        textField.textColor = .blackDayNew
         textField.layer.cornerRadius = 16
         textField.font = UIFont(name: "SFPro-Regular", size: 17)
         textField.setLeftPaddingPoints(16)
@@ -34,21 +36,21 @@ class TrackerAddViewController: UIViewController {
     
     private let selectionContainer: UIView = {
         let view = UIView()
-        view.backgroundColor = UIColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1)
+        view.backgroundColor = .fieldBackground.withAlphaComponent(0.3)
         view.layer.cornerRadius = 16
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
     
     private lazy var categoryRow: NewHabitRow = {
-        let row = NewHabitRow(title: "Категория")
+        let row = NewHabitRow(title: L10n.categoryLabel)
         row.setOnTap { [weak self] in
             self?.presentCategoryPicker()
         }
         return row
     }()
     private lazy var scheduleRow: NewHabitRow = {
-        let row = NewHabitRow(title: "Расписание")
+        let row = NewHabitRow(title: L10n.schedule)
         row.setOnTap { [weak self, weak row] in
             guard let self = self, let row = row else { return }
             ScheduleViewController.present(
@@ -67,30 +69,30 @@ class TrackerAddViewController: UIViewController {
     
     private let cancelButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Отменить", for: .normal)
+        button.setTitle(L10n.cancelButton, for: .normal)
         button.titleLabel?.font = UIFont(name: "SFPro-Medium", size: 16)
         button.titleLabel?.lineHeight(22)
-        button.setTitleColor(.systemRed, for: .normal)
+        button.setTitleColor(.redYPcolor, for: .normal)
         button.layer.cornerRadius = 16
         button.layer.borderWidth = 1
-        button.layer.borderColor = UIColor.systemRed.cgColor
+        button.layer.borderColor = UIColor.redYPcolor.cgColor
         return button
     }()
     
     private let createButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Создать", for: .normal)
+        button.setTitle(L10n.categoryCreateButton, for: .normal)
         button.titleLabel?.font = UIFont(name: "SFPro-Medium", size: 16)
         button.titleLabel?.lineHeight(22)
         button.setTitleColor(.white, for: .normal)
-        button.backgroundColor = UIColor(red: 0.65, green: 0.66, blue: 0.69, alpha: 1) // #A6A7AB
+        button.backgroundColor = .grayText
         button.layer.cornerRadius = 16
         return button
     }()
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
+        view.backgroundColor = .whiteDayNew
         setupLayout()
 
         if !selectedDays.isEmpty { scheduleRow.updateSubtitle(formatDays(selectedDays)) }
@@ -145,7 +147,7 @@ class TrackerAddViewController: UIViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
         
         let separator = UIView()
-        separator.backgroundColor = UIColor(red: 0.75, green: 0.76, blue: 0.77, alpha: 1)
+        separator.backgroundColor = .grayText
         separator.translatesAutoresizingMaskIntoConstraints = false
         
         let selectionStack = UIStackView(arrangedSubviews: [categoryRow, separator, scheduleRow])
@@ -195,13 +197,11 @@ class TrackerAddViewController: UIViewController {
     
     // MARK: - Category picker
     private func presentCategoryPicker() {
-        // Берём контекст из AppDelegate без импорта CoreData здесь
         guard let app = UIApplication.shared.delegate as? AppDelegate else { return }
         let store = TrackerCategoryStore(context: app.persistentContainer.viewContext)
         let viewModel = TrackerCategoryViewModel(categoryStore: store)
         let categoryVC = CategorySelectionViewController(viewModel: viewModel)
 
-        // Вернём выбранный заголовок категории в текущий экран
         categoryVC.onCategorySelected = { [weak self] category in
             guard let self = self else { return }
             let title = category.title?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -225,7 +225,6 @@ class TrackerAddViewController: UIViewController {
     }
     
     private func createTracker() {
-        // 1) Жёсткие проверки перед сохранением
         guard
             let name = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
             !name.isEmpty
@@ -236,28 +235,23 @@ class TrackerAddViewController: UIViewController {
             !categoryTitle.isEmpty
         else { return }
 
-        // emoji / color / schedule обязательны (кнопка "Создать" и так блокируется, но дублируем на всякий случай)
         guard
             let emoji = emojiAndColorPicker.selectedEmoji,
             let uiColor = emojiAndColorPicker.selectedColor,
             !selectedDays.isEmpty
         else { return }
 
-        // 2) Получаем контекст и сторы (без import CoreData здесь)
         guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
         let context = appDelegate.persistentContainer.viewContext
         let categoryStore = TrackerCategoryStore(context: context)
         let trackerStore  = TrackerStore(context: context)
 
-        // 3) Берём (или создаём) категорию строго один раз — всегда один и тот же объект для одного title
         let categoryEntity = categoryStore.createCategoryIfNeeded(title: categoryTitle)
 
-        // 4) Готовим поля трекера
         let id = UUID()
         let colorHex = uiColor.toHexString()
         let schedule = selectedDays
 
-        // 5) Логируем то, что сохраняем
         print("[AddVC] will save tracker:",
               "id=\(id.uuidString)",
               "name=\(name)",
@@ -266,7 +260,6 @@ class TrackerAddViewController: UIViewController {
               "colorHex=\(colorHex)",
               "schedule=\(schedule.map { $0.rawValue })")
 
-        // 6) Сохраняем
         trackerStore.addTracker(
             id: id,
             name: name,
@@ -276,13 +269,6 @@ class TrackerAddViewController: UIViewController {
             category: categoryEntity
         )
 
-        // 7) ВАЖНО: не трогаем локальные массивы/секции и не зовём onCreate — экран списка
-        // сам обновится через NSFetchedResultsController (trackerStore.onChange)
-        // Если onCreate сейчас используется где‑то ещё — можно оставить, но он здесь не нужен.
-        // onCreate?(TrackerCategory(title: categoryTitle, trackers: [
-        //     Tracker(id: id, name: name, color: uiColor, emoji: emoji, schedule: schedule, isPinned: false)
-        // ]))
-        // 9) Закрываем экран
         dismiss(animated: true, completion: nil)
     }
     @objc private func createButtonTapped() {
@@ -302,25 +288,38 @@ class TrackerAddViewController: UIViewController {
         
         let enabled = hasName && hasCategory && hasSchedule && hasEmoji && hasColor
         createButton.isEnabled = enabled
-        createButton.backgroundColor = enabled ? .black : UIColor(red: 0.65, green: 0.66, blue: 0.69, alpha: 1)
+        createButton.backgroundColor = enabled ? .blackDayNew : .grayText
     }
     
     private func formatDays(_ days: [DayOfWeek]) -> String {
         if days.isEmpty { return "" }
-        if days.count == DayOfWeek.allCases.count { return "Каждый день" }
-        let map: [DayOfWeek: String] = [
-            .monday: "Понедельник", .tuesday: "Вторник", .wednesday: "Среда",
-            .thursday: "Четверг", .friday: "Пятница", .saturday: "Суббота", .sunday: "Воскресенье"
+        if days.count == DayOfWeek.allCases.count { return L10n.everyDay }
+
+        let full: [DayOfWeek: String] = [
+            .monday: L10n.mondayFull,
+            .tuesday: L10n.tuesdayFull,
+            .wednesday: L10n.wednesdayFull,
+            .thursday: L10n.thursdayFull,
+            .friday: L10n.fridayFull,
+            .saturday: L10n.saturdayFull,
+            .sunday: L10n.sundayFull
         ]
+        let short: [DayOfWeek: String] = [
+            .monday: L10n.mondayShort,
+            .tuesday: L10n.tuesdayShort,
+            .wednesday: L10n.wednesdayShort,
+            .thursday: L10n.thursdayShort,
+            .friday: L10n.fridayShort,
+            .saturday: L10n.saturdayShort,
+            .sunday: L10n.sundayShort
+        ]
+
         if days.count >= 2 {
-            let short: [DayOfWeek: String] = [
-                .monday: "Пн", .tuesday: "Вт", .wednesday: "Ср",
-                .thursday: "Чт", .friday: "Пт", .saturday: "Сб", .sunday: "Вс"
-            ]
-            return days.sorted { $0.rawValue < $1.rawValue }.compactMap { short[$0] }.joined(separator: ", ")
+            return days.sorted { $0.rawValue < $1.rawValue }
+                .compactMap { short[$0] }
+                .joined(separator: ", ")
         }
-        // Один день — полное имя
-        if let only = days.first, let full = map[only] { return full }
+        if let only = days.first, let name = full[only] { return name }
         return ""
     }
     

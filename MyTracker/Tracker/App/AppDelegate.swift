@@ -1,6 +1,14 @@
 import UIKit
 import CoreData
 
+#if canImport(AppMetricaCore)
+import AppMetricaCore
+#endif
+
+#if canImport(YandexMobileMetrica)
+import YandexMobileMetrica
+#endif
+
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
 
@@ -66,6 +74,27 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         if let rel = rel {
             print("trackers isToMany =", rel.isToMany)
         }
+        let appMetricaApiKey = "81efead2-f8f7-4610-bd05-1203ae77ac36"
+
+        #if canImport(AppMetricaCore)
+        if let config = AppMetricaConfiguration(apiKey: appMetricaApiKey) {
+            AppMetrica.activate(with: config)
+            print("[AppMetrica] Activated via SPM (AppMetricaCore).")
+        } else {
+            print("[AppMetrica] Failed to create AppMetricaConfiguration — check API key.")
+        }
+        #elseif canImport(YandexMobileMetrica)
+        if let config = YMMYandexMetricaConfiguration(apiKey: appMetricaApiKey) {
+            YMMYandexMetrica.activate(with: config)
+            YMMYandexMetrica.enableLogging(true)
+            print("[AppMetrica] Activated via CocoaPods (YandexMobileMetrica).")
+        } else {
+            print("[AppMetrica] Failed to create YMMYandexMetricaConfiguration — check API key.")
+        }
+        #else
+        print("[AppMetrica] SDK not found. Make sure the package (SPM) or pod is added to the app target.")
+        #endif
+
         return true
     }
 

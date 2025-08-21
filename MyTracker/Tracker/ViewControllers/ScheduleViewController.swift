@@ -4,12 +4,17 @@ import Foundation
 class ScheduleViewController: UIViewController {
     
     var onScheduleSelected: (([DayOfWeek]) -> Void)?
+    var onSchedulePicked: (([DayOfWeek]) -> Void)? {
+        didSet { onScheduleSelected = onSchedulePicked }
+    }
+    
     var preselectedDays: Set<DayOfWeek> = []
-    private var selectedDays: Set<DayOfWeek> = []
+    
+    var selectedDays: Set<DayOfWeek> = []
     
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.text = "Расписание"
+        label.text = L10n.schedule
         label.font = UIFont(name: "SFPro-Medium", size: 16)
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -18,25 +23,28 @@ class ScheduleViewController: UIViewController {
     
     private let selectionContainer: UIView = {
         let view = UIView()
-        view.backgroundColor = UIColor(red: 0.96, green: 0.97, blue: 0.98, alpha: 1)
+        view.backgroundColor = .fieldBackground.withAlphaComponent(0.3)
         view.layer.cornerRadius = 16
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
     
-    private let dayList: [NewDayRow] = [
-        NewDayRow(title: "Понедельник"),
-        NewDayRow(title: "Вторник"),
-        NewDayRow(title: "Среда"),
-        NewDayRow(title: "Четверг"),
-        NewDayRow(title: "Пятница"),
-        NewDayRow(title: "Суббота"),
-        NewDayRow(title: "Воскресенье")
-    ]
+    private lazy var dayList: [NewDayRow] = {
+        let titles = [
+            L10n.mondayFull,
+            L10n.tuesdayFull,
+            L10n.wednesdayFull,
+            L10n.thursdayFull,
+            L10n.fridayFull,
+            L10n.saturdayFull,
+            L10n.sundayFull
+        ]
+        return titles.map { NewDayRow(title: $0) }
+    }()
     
     private let doneButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setTitle("Готово", for: .normal)
+        button.setTitle(L10n.doneButton, for: .normal)
         button.setTitleColor(.whiteDayNew, for: .normal)
         button.titleLabel?.font = UIFont(name: "SFPro-Medium", size: 16)
         button.backgroundColor = .blackDayNew
@@ -47,8 +55,12 @@ class ScheduleViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .white
-        selectedDays = preselectedDays
+        view.backgroundColor = .systemBackground
+        
+        if selectedDays.isEmpty {
+            selectedDays = preselectedDays
+        }
+        
         setupLayout()
         titleLabel.lineHeight(22)
         doneButton.addTarget(self, action: #selector(closeSheet), for: .touchUpInside)
@@ -65,9 +77,9 @@ class ScheduleViewController: UIViewController {
         
         var selectionItems: [UIView] = []
         for (index, row) in dayList.enumerated() {
-            let day = DayOfWeek(rawValue: index + 1)!
+            guard let day = DayOfWeek(rawValue: index + 1) else { continue }
             
-            row.setSwitchOn(preselectedDays.contains(day))
+            row.setSwitchOn(selectedDays.contains(day))
             
             row.onToggle = { [weak self] isOn in
                 guard let self = self else { return }
@@ -93,6 +105,7 @@ class ScheduleViewController: UIViewController {
         let selectionStack = UIStackView(arrangedSubviews: selectionItems)
         selectionStack.axis = .vertical
         selectionStack.spacing = 0
+        selectionStack.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
         selectionStack.translatesAutoresizingMaskIntoConstraints = false
         
         selectionContainer.addSubview(selectionStack)
@@ -113,9 +126,13 @@ class ScheduleViewController: UIViewController {
         
         view.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 13),
+            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 13),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+        ])
+        // Prevent the title from being pushed down by sheet insets
+        NSLayoutConstraint.activate([
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: doneButton.topAnchor, constant: -16)
         ])
     }
     
@@ -123,6 +140,7 @@ class ScheduleViewController: UIViewController {
         let result = Array(selectedDays).sorted { $0.rawValue < $1.rawValue }
         print("[ScheduleVC] will send days:", result)
         onScheduleSelected?(result)
+        onSchedulePicked?(result)
         dismiss(animated: true, completion: nil)
     }
     

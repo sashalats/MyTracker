@@ -50,14 +50,14 @@ final class TrackerCell: UICollectionViewCell {
         let label = UILabel()
         label.font = UIFont(name: "SFPro-Medium", size: 12)
         label.lineHeight(18)
-        label.textColor = .black
+        label.textColor = .blackDayNew
         label.textAlignment = .left
         return label
     }()
     
     private let markButton: UIButton = {
         let button = UIButton(type: .system)
-        button.tintColor = .white
+        button.tintColor = .whiteDayNew
         button.layer.cornerRadius = 17
         button.widthAnchor.constraint(equalToConstant: 34).isActive = true
         button.heightAnchor.constraint(equalToConstant: 34).isActive = true
