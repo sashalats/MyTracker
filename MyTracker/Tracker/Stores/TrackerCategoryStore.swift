@@ -2,46 +2,80 @@ import CoreData
 
 final class TrackerCategoryStore {
     private let context: NSManagedObjectContext
-    
+
     var onCategoriesChanged: (([TrackerCategoryCoreData]) -> Void)?
-    
+
     init(context: NSManagedObjectContext) {
         self.context = context
     }
-    
+
+    // MARK: - Helpers
+    private func normalized(_ title: String) -> String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Fetch
     func fetchAllCategories() -> [TrackerCategoryCoreData] {
         let request: NSFetchRequest<TrackerCategoryCoreData> = TrackerCategoryCoreData.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
-        let result = (try? context.fetch(request)) ?? []
-        return result
+        return (try? context.fetch(request)) ?? []
     }
-    
+
     func fetchCategory(with title: String) -> TrackerCategoryCoreData? {
+        let key = normalized(title)
         let request: NSFetchRequest<TrackerCategoryCoreData> = TrackerCategoryCoreData.fetchRequest()
-        request.predicate = NSPredicate(format: "title == %@", title)
+        // =[c] — сравнение без учета регистра
+        request.predicate = NSPredicate(format: "title =[c] %@", key)
+        request.fetchLimit = 1
         return try? context.fetch(request).first
     }
-    
+
+    // MARK: - Create
     func createCategoryIfNeeded(title: String) -> TrackerCategoryCoreData {
-        if let existing = fetchCategory(with: title) {
+        let key = normalized(title)
+        if let existing = fetchCategory(with: key) {
             return existing
         }
-        return createNewCategory(title: title)
+        return createNewCategory(title: key)
     }
-    
+
     func createNewCategory(title: String) -> TrackerCategoryCoreData {
+        let key = normalized(title)
         let category = TrackerCategoryCoreData(context: context)
-        category.title = title
+        category.title = key
         saveContext()
         notifyObservers()
         return category
     }
-    
-    private func notifyObservers() {
-        let all = fetchAllCategories()
-        onCategoriesChanged?(all)
+
+    // MARK: - Update/Delete
+    func renameCategory(_ category: TrackerCategoryCoreData, to newTitle: String) {
+        category.title = normalized(newTitle)
+        saveContext()
+        notifyObservers()
     }
-    
+
+    func deleteCategory(_ category: TrackerCategoryCoreData) {
+        let request: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
+        request.predicate = NSPredicate(format: "category == %@", category)
+
+        do {
+            let trackers = try context.fetch(request)
+            trackers.forEach { context.delete($0) }
+        } catch {
+            print("Ошибка при получении трекеров для удаления категории: \(error)")
+        }
+
+        context.delete(category)
+        saveContext()
+        notifyObservers()
+    }
+
+    // MARK: - Private
+    private func notifyObservers() {
+        onCategoriesChanged?(fetchAllCategories())
+    }
+
     private func saveContext() {
         guard context.hasChanges else { return }
         do {
@@ -49,27 +83,5 @@ final class TrackerCategoryStore {
         } catch {
             print("Ошибка сохранения контекста категории: \(error)")
         }
-    }
-    
-    func deleteCategory(_ category: TrackerCategoryCoreData) {
-        let request: NSFetchRequest<TrackerCoreData> = TrackerCoreData.fetchRequest()
-        request.predicate = NSPredicate(format: "category == %@", category)
-        
-        do {
-            let trackers = try context.fetch(request)
-            trackers.forEach { context.delete($0) }
-        } catch {
-            print("Ошибка при получении трекеров для удаления категории: \(error)")
-        }
-        
-        context.delete(category)
-        saveContext()
-        notifyObservers()
-    }
-    
-    func renameCategory(_ category: TrackerCategoryCoreData, to newTitle: String) {
-        category.title = newTitle
-        saveContext()
-        notifyObservers()
     }
 }
