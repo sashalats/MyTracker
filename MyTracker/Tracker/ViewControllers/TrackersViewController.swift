@@ -174,7 +174,6 @@ class TrackersViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .whiteDayNew
-        // (Optional) Early hook before appear
         report(event: "open")
         setupLayout()
         dateButton.addTarget(self, action: #selector(openCalendar), for: .touchUpInside)
@@ -219,7 +218,6 @@ class TrackersViewController: UIViewController {
             }
         }
 
-        // If filter is .today — ensure today's date shown
         if currentFilter == .today {
             currentDate = Date()
             dateButton.setTitle(currentDate.formattedString(), for: .normal)
@@ -472,17 +470,17 @@ class TrackersViewController: UIViewController {
         if !hasAny {
             if !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                currentFilter == .completed || currentFilter == .uncompleted {
+                emptyIcon.image = UIImage(named: "Not_Found")
                 emptyLabel.text = L10n.nothingFound
             } else {
+                emptyIcon.image = UIImage(named: "Empty")
                 emptyLabel.text = L10n.baseScreenPrompt
             }
         }
     }
     
     private func presentEdit(for tracker: Tracker) {
-        // Вью‑модель категорий
         let categoryVM = TrackerCategoryViewModel(categoryStore: categoryStore)
-        // Вью‑модель трекеров (иниц под свой проект — при необходимости поправь сигнатуру)
         let trackersVM = TrackerViewModel(
             trackerStore: trackerStore,
             categoryStore: categoryStore,

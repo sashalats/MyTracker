@@ -66,7 +66,7 @@ final class StatisticViewController: UIViewController {
         trackerStore.onChange = { [weak self] _ in
             self?.rebuildViewModel()
         }
-
+        
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(recordsChanged),
@@ -88,7 +88,7 @@ final class StatisticViewController: UIViewController {
         // Все записи (completions)
         let records = recordStore.fetchAllRecords()
 
-        self.viewModel = StatisticViewModel(trackers: trackers, records: records)
+        viewModel = StatisticViewModel(trackers: trackers, records: records)
     }
 
     @objc private func recordsChanged() {

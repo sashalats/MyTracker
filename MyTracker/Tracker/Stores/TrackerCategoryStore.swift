@@ -10,6 +10,8 @@ final class TrackerCategoryStore {
     }
 
     // MARK: - Helpers
+    /// Единая нормализация ключа категории: убираем пробелы по краям.
+    /// (При необходимости сюда можно добавить .lowercased())
     private func normalized(_ title: String) -> String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -21,6 +23,7 @@ final class TrackerCategoryStore {
         return (try? context.fetch(request)) ?? []
     }
 
+    /// Поиск категории по названию (без учета регистра, с нормализацией)
     func fetchCategory(with title: String) -> TrackerCategoryCoreData? {
         let key = normalized(title)
         let request: NSFetchRequest<TrackerCategoryCoreData> = TrackerCategoryCoreData.fetchRequest()

@@ -28,12 +28,12 @@ final class EditTrackerViewController: UIViewController {
         }
     }
     
-    private let emojiAndColorPicker = EmojiAndColorPickerView()
-    private let scrollView = UIScrollView()
-    private let contentView = UIView()
+    private lazy var emojiAndColorPicker = EmojiAndColorPickerView()
+    private lazy var scrollView = UIScrollView()
+    private lazy var contentView = UIView()
     
     // MARK: - UI
-    private let titleLabel: UILabel = {
+    private lazy var titleLabel: UILabel = {
         let label = UILabel()
         label.text = L10n.newHabitButton
         label.font = UIFont(name: "SFPro-Medium", size: 16)
@@ -42,7 +42,7 @@ final class EditTrackerViewController: UIViewController {
         return label
     }()
     
-    private let counterLabel: UILabel = {
+    private lazy var counterLabel: UILabel = {
         let label = UILabel()
         label.font = UIFont(name: "SFPro-Bold", size: 32)
         label.textColor = .blackDayNew
@@ -50,7 +50,7 @@ final class EditTrackerViewController: UIViewController {
         return label
     }()
     
-    private let nameField: UITextField = {
+    private lazy var nameField: UITextField = {
         let field = UITextField()
         field.placeholder = L10n.trackerNamePlaceholder
         field.textColor = .blackDayNew
@@ -61,7 +61,7 @@ final class EditTrackerViewController: UIViewController {
         return field
     }()
     
-    private let optionContainerView: UIView = {
+    private lazy var optionContainerView: UIView = {
         let view = UIView()
         view.backgroundColor = .fieldBackground.withAlphaComponent(0.3)
         view.layer.cornerRadius = 16
