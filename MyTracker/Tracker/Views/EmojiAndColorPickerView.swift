@@ -3,8 +3,8 @@ import UIKit
 final class EmojiAndColorPickerView: UIView {
     
     // MARK: - Public
-    var selectedEmoji: String?
-    var selectedColor: UIColor?
+    var selectedEmoji: String? { didSet { emojiCollectionView.reloadData() } }
+    var selectedColor: UIColor? { didSet { colorCollectionView.reloadData() } }
     
     var onChange: (() -> Void)?
     
@@ -22,7 +22,7 @@ final class EmojiAndColorPickerView: UIView {
     
     private let colorLabel: UILabel = {
         let label = UILabel()
-        label.text = "Цвета"
+        label.text = L10n.color
         label.font = UIFont(name: "SFPro-Bold", size: 19)
         label.textColor = .blackDayNew
         return label
@@ -50,7 +50,7 @@ final class EmojiAndColorPickerView: UIView {
         collectionView.delegate = self
         return collectionView
     }()
-    
+
     // MARK: - Init
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -114,11 +114,11 @@ extension EmojiAndColorPickerView: UICollectionViewDataSource, UICollectionViewD
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         if collectionView == emojiCollectionView {
             selectedEmoji = emojis[indexPath.item]
-            emojiCollectionView.reloadData()
         } else {
             selectedColor = colors[indexPath.item]
         }
-        
+        // синхронизируем обе сетки (снимем прошлое выделение)
+        emojiCollectionView.reloadData()
         colorCollectionView.reloadData()
         onChange?()
     }
@@ -159,3 +159,5 @@ extension EmojiAndColorPickerView: UICollectionViewDataSource, UICollectionViewD
     }
 }
 
+
+    

@@ -1,4 +1,3 @@
-
 import UIKit
 
 final class MainTabBarController: UITabBarController {
@@ -13,7 +12,7 @@ final class MainTabBarController: UITabBarController {
     private func configureAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = .white
+        appearance.backgroundColor = .whiteDayNew
         appearance.shadowColor = UIColor(red: 0.682, green: 0.686, blue: 0.706, alpha: 1) // AEAFB4
 
         tabBar.standardAppearance = appearance
@@ -27,18 +26,21 @@ final class MainTabBarController: UITabBarController {
         let trackersVC = TrackersViewController()
         let trackersNav = UINavigationController(rootViewController: trackersVC)
         trackersNav.setNavigationBarHidden(true, animated: false)
-
         trackersNav.tabBarItem = UITabBarItem(
-            title: NSLocalizedString("Трекеры", comment: "Trackers tab"),
+            title: L10n.trackers,
             image: UIImage(named: "TapBar_Tracker"),
-            selectedImage: UIImage(named: "TapBar_Tracker_Selected")
+            selectedImage: UIImage(named: "TapBar_Tracker_Selected"),
         )
+        trackersNav.navigationBar.tintColor = .whiteDayNew
+        // Статистика (инжектим сторы)
+        let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+        let trackerStore = TrackerStore(context: context)
+        let recordStore  = TrackerRecordStore(context: context)
 
-        // Статистика
-        let statsVC = StatisticViewController()
+        let statsVC = StatisticViewController(trackerStore: trackerStore, recordStore: recordStore)
         let statsNav = UINavigationController(rootViewController: statsVC)
         statsNav.tabBarItem = UITabBarItem(
-            title: NSLocalizedString("Статистика", comment: "Statistics tab"),
+            title: L10n.statistic,
             image: UIImage(named: "TapBar_Stats"),
             selectedImage: UIImage(named: "TapBar_Stats_Selected")
         )

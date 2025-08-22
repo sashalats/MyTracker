@@ -1,5 +1,9 @@
 import CoreData
 
+extension Notification.Name {
+    static let trackerRecordsDidChange = Notification.Name("TrackerRecordsDidChange")
+}
+
 final class TrackerRecordStore {
     private let context: NSManagedObjectContext
     
@@ -70,6 +74,7 @@ final class TrackerRecordStore {
         guard context.hasChanges else { return }
         do {
             try context.save()
+            NotificationCenter.default.post(name: .trackerRecordsDidChange, object: nil)
         } catch {
             print("Ошибка сохранения контекста записей: \(error)")
         }
